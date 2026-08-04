@@ -1,51 +1,313 @@
-This is another aproeach to hearthland video game, but made simplier. It is video board game about colonization, resources, and churchillig throught the day. 
-The goal of the game is to conquere the world, and dont loose hope. 
+# Hearthland (Prototype)
 
-1. We create 3x3 matrix of nodes connected vertical and horizontal, but not diagonal. there should be 9 nodes, and 12 arms. Box setup, like keypad.
-2. Node in center is our homebase, others are expansion. Nodes should be complex object, as they will have many properties. Maybe literally object, as they could have buildings, and pops, and units inside. 
-3. Each node shoud have population value of 1-9. Center piece is our homeland and has default value of 9. 
-4. Each arm has cost value, the inside cross arms has value cost 1-5, and outer ring borders has cost value 5-7. 
-5. There are resources in the game: Timber, Grain, Tabaccoo. Our home node has 3 grain and 2 farms by default. Tabaccoo exists in quantity of 1-3, grain 2-7, timber 1-5. We roll it at game start. 
-This definies maximum extraction from the node. But we need to build plantacion, sawmills, and farms. And put pops into it. 1 pop is 1 good. Building cost 2 coins. 
-6. Coins is a currency. We can trade it for goods or buy some other things. 
-7. For 2 timber and 2 coins we can build Brewery, which turns 1grain 1 timber into 2 whiskey. 
-8. We can trade with the world. Grain and timber has initial world stock of 8. Whiskey and tabacoo 1. Cost to buy/sell: Grains 2/1; Timber 3/1, Tabacco: 4/2, Whiskey 5/3. We cant overflow global cap of 10 for each good. 
-9. The game has turns. We click button to progress turn. 
-10. Churchillmood: Starts at 10, each round it drops by 1. We can put tabaccoo for +1, or whiskey for +2. If it reaches 0 we loose. 
-11. We start with 2 troops. troops can teleport on nodes we control, or we have sea connection. They could be trapped if we loose sea connection.
-    They cost 2 grain 1 coin to recruit, and eat 1 grain a turn. If no grain then 1 coin.
-     If no coin then -1 churchillmood.
-13. We start with 1 ship. We can build more for 2 timber 1 coin. We can move ship on any arm which has connection to hearthland (center node). We can have multiple ships on arm but no benefit 1 is enought.
-14. Each node has required troop count. Startsting node has 1. Others have 1-3. We need to place required number of troops to collect taxes and manage production.
-15. Putting ship on lane cost us each turn coins of the value. But controlling node (land) gives us coins equal to pop. but it needs to be lane connected to hearthland, and occupied with suffiecient number of troops.
-16. We can skip nodes. like we can have only center and corners. But we still need connect ship lanes. There should flags on nodes: suffiecient troosp True. and sealanesconnection True. If both true then we collect coins and goods.
-17. When we occupy land we still needs to build sawmill and farms and plantacions and assign pops to extract it.
-18. We can teleport ships to homeland so they will not pay cost, just wait for next order.
-19. Turn Buttons commits all calculations of cost and maybe production.
-20. We have infinite magazine where we collect resources, and we can teleport it. 
+## Overview
 
-We start game with 1 ship, 2 troops, 10 coins, center node controlled. It has 9 pops and demand 1 troop. It has 3 max grain with 2 farms build, and 2 pops producing. Therefore we get 2 grain from it. 
+This is a simplified version of **Hearthland**, a strategy board game inspired by colonial empires, resource management, and trade networks.
 
-Buildings:
-Farm 1 coin
-Sawmill 1 coin 
-Plantacion 2 grain 1 coin
-Brewery 2 timber 2 coins
-Troop 2 grain 1 coin (maintain 1 grains turn)
-Ship 2 timber 1 coin
+The player expands from a homeland, develops colonies, extracts resources, builds industries, and maintains a global shipping network. Every turn the empire becomes slightly harder to manage, so balancing expansion, economy, and morale is essential.
 
-Production
-Sawmill (timber), Plantacion (tabbacoo), Farm (grain) all 1 per turn, but you need to put pops on it, and build it. And there is resources limit on each node. 
-Brevery 2 grain+2 timber=2 whiskey
+## Objective
 
-Turn Cost
-Troops 1 grain
-Ship lanes - value in coins from lane cost. 
+### Victory
 
-Defeat:
-When churchillmood reaches 0 we loose. It degredes -1 each turn. Tabbaccoo sacrifize +1, Whiskey sacrifize +2
+Win by:
 
-Victory:
-When we collect 6 nodes with troops and sealanes. And reach churchillmood to 9. 
+* Controlling **6 territories**.
+* Every controlled territory must have sufficient troops and an unbroken sea connection to the homeland.
+* Finish with **Churchill Mood at 9 or higher**.
 
+### Defeat
 
+Lose when **Churchill Mood reaches 0**.
+
+Churchill Mood decreases by **1 each turn**.
+
+It can be restored by consuming luxury goods:
+
+* Tobacco: +1 Mood
+* Whiskey: +2 Mood
+
+---
+
+# Map
+
+The world consists of a **3×3 grid** of territories.
+
+```
+O — O — O
+|   |   |
+O — O — O
+|   |   |
+O — O — O
+```
+
+* 9 nodes (territories)
+* 12 connections (sea lanes)
+
+The center territory is the player's homeland.
+
+---
+
+# Territories (Nodes)
+
+Each territory is represented by an object that may later contain:
+
+* Population
+* Resources
+* Buildings
+* Troops
+* Production assignments
+* Ownership
+* Other gameplay properties
+
+### Population
+
+Each territory has a population value between **1 and 9**.
+
+* Homeland always starts at **9 population**.
+* Other territories are randomized between **1 and 9**.
+
+### Occupation Requirement
+
+Every territory requires a minimum number of troops to function.
+
+* Homeland: 1 troop
+* Other territories: 1–3 troops
+
+Only sufficiently garrisoned territories generate income and produce resources.
+
+---
+
+# Connections (Sea Lanes)
+
+Connections have maintenance costs.
+
+* Inner cross connections: cost **1–5**
+* Outer ring connections: cost **5–7**
+
+Sea lanes connect colonies back to the homeland.
+
+A colony only functions if it has an uninterrupted sea route to the homeland.
+
+Ships may be returned to the homeland at any time, avoiding maintenance until redeployed.
+
+---
+
+# Resources
+
+The prototype contains three raw resources:
+
+* Grain
+* Timber
+* Tobacco
+
+Each territory randomly generates resource deposits.
+
+### Maximum deposits
+
+* Grain: 2–7
+* Timber: 1–5
+* Tobacco: 1–3
+
+These values represent the maximum possible extraction from the territory.
+
+### Homeland
+
+Starts with:
+
+* 3 Grain deposits
+* 2 Farms already built
+* 2 Population assigned to farming
+
+This produces **2 Grain per turn**.
+
+---
+
+# Population & Production
+
+Population must be assigned to buildings.
+
+Each assigned population produces **1 resource per turn**, provided:
+
+* the correct building exists,
+* deposits remain available,
+* the territory is operational.
+
+---
+
+# Buildings
+
+| Building   | Cost               | Production                             |
+| ---------- | ------------------ | -------------------------------------- |
+| Farm       | 1 Coin             | 1 Grain                                |
+| Sawmill    | 1 Coin             | 1 Timber                               |
+| Plantation | 2 Grain + 1 Coin   | 1 Tobacco                              |
+| Brewery    | 2 Timber + 2 Coins | Converts Grain and Timber into Whiskey |
+
+### Brewery Recipe
+
+Consumes:
+
+* 2 Grain
+* 2 Timber
+
+Produces:
+
+* 2 Whiskey
+
+---
+
+# Economy
+
+Coins are the main currency.
+
+They are used to:
+
+* construct buildings,
+* recruit troops,
+* build ships,
+* maintain the empire.
+
+Controlled territories generate tax income equal to their population.
+
+A territory only pays taxes if:
+
+* sufficient troops are present,
+* it has a valid sea connection to the homeland.
+
+---
+
+# World Market
+
+Resources may be traded with the global market.
+
+| Resource | Buy | Sell |
+| -------- | --: | ---: |
+| Grain    |   2 |    1 |
+| Timber   |   3 |    1 |
+| Tobacco  |   4 |    2 |
+| Whiskey  |   5 |    3 |
+
+Initial world supply:
+
+* Grain: 8
+* Timber: 8
+* Tobacco: 1
+* Whiskey: 1
+
+Maximum world stock for every resource is **10**.
+
+---
+
+# Military
+
+The player starts with:
+
+* 2 Troops
+
+Recruitment cost:
+
+* 2 Grain
+* 1 Coin
+
+Maintenance:
+
+* 1 Grain each turn
+
+If Grain is unavailable:
+
+* Pay 1 Coin instead.
+
+If neither Grain nor Coins are available:
+
+* Churchill Mood decreases by 1.
+
+Troops may instantly move between territories that:
+
+* are under player control, and
+* are connected by an active sea network.
+
+If sea connections are lost, troops may become isolated.
+
+---
+
+# Ships
+
+The player starts with:
+
+* 1 Ship
+
+Construction cost:
+
+* 2 Timber
+* 1 Coin
+
+Ships are assigned to sea lanes.
+
+Multiple ships may occupy the same connection, although only one is required.
+
+Each occupied sea lane costs Coins every turn equal to its maintenance value.
+
+Ships may be recalled to the homeland to eliminate maintenance costs until needed again.
+
+---
+
+# Expansion
+
+The player is not required to occupy every territory.
+
+It is possible to skip territories and control only strategically valuable ones.
+
+Each territory tracks two important states:
+
+* `sufficientTroops`
+* `seaConnection`
+
+Only territories where both values are **true**:
+
+* generate taxes,
+* produce resources.
+
+Capturing a territory does not automatically produce resources.
+
+Buildings must still be constructed and population assigned.
+
+---
+
+# Turn Sequence
+
+Press **End Turn** to resolve:
+
+* Resource production
+* Brewery production
+* Tax income
+* Ship maintenance
+* Troop upkeep
+* Churchill Mood decrease
+* Trade
+* Victory and defeat checks
+
+Resources are stored in a single global stockpile and may be used anywhere in the empire.
+
+---
+
+# Starting Conditions
+
+The player begins with:
+
+* 1 Homeland (center territory)
+* 1 Ship
+* 2 Troops
+* 10 Coins
+
+Homeland:
+
+* Population: 9
+* Required Troops: 1
+* Grain Deposits: 3
+* Farms Built: 2
+* Population Working Farms: 2
+
+Initial production:
+
+* 2 Grain per turn.
