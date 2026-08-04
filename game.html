@@ -625,8 +625,32 @@ function render(){
       map.appendChild(div);
     } else if(SEA_LANE_POSITIONS.includes(i)){
       // Sea lane cell
-      const laneIndex = GRID_TO_LANE[i];
-      const lane = state.lanes[laneIndex];
+      // Some heavy editing here gone. Correct grid mapping. 
+    
+
+const LANE_MAP = {
+    1: 0,   // Ironhold ↔ Gale Point
+    3: 1,   // Gale Point ↔ Sandshore
+    5: 6,   // Ironhold ↔ Millbrook
+    7: 8,   // Gale Point ↔ Homeland
+    9: 10,  // Sandshore ↔ Fisher's Cape
+    11: 2,  // Millbrook ↔ Homeland
+    13: 3,  // Homeland ↔ Fisher's Cape
+    15: 7,  // Millbrook ↔ Stonewick
+    17: 9,  // Homeland ↔ Dustmere
+    19: 11, // Fisher's Cape ↔ Farrow's End
+    21: 4,  // Stonewick ↔ Dustmere
+    23: 5   // Dustmere ↔ Farrow's End
+};
+
+const laneIndex = LANE_MAP[i];
+const lane = state.lanes[laneIndex];
+
+    
+      
+    
+
+      
       const div = document.createElement('div');
       div.className = 'sea-lane';
       div.innerHTML = `
