@@ -302,7 +302,7 @@ function buildTerritories(){
     } else {
       t.push({
         id:i, name:NAMES[i], owner:'neutral',
-        population:rand(1,9), requiredTroops:rand(1,3), troopsStationed:0,
+        population:rand(3,9), requiredTroops:rand(1,3), troopsStationed:0,
         deposits:{grain:rand(2,7),timber:rand(1,5),tobacco:rand(1,3)},
         maxDeposits:null,
         buildings:{farm:0,sawmill:0,plantation:0,brewery:0},
@@ -343,7 +343,7 @@ const BUILD_KEY = { farm:'grain', sawmill:'timber', plantation:'tobacco', brewer
 const BUILD_COST = {
   farm:{coins:1},
   sawmill:{coins:1},
-  plantation:{grain:2,coins:1},
+  plantation:{timber:1,coins:1}, //timber cost
   brewery:{timber:2,coins:2}
 };
 
