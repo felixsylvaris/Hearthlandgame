@@ -62,7 +62,7 @@
 
   .layout{
     display:grid;
-    grid-template-columns: 420px 320px 1fr;
+    grid-template-columns: 600px 320px 1fr;
     gap:16px;
     align-items:start;
   }
@@ -86,18 +86,20 @@
 
   .map{
     display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:8px;
+    grid-template-columns: repeat(5, 1fr);
+    gap:4px;
   }
-  .tile{
+  .tile, .sea-lane, .empty{
     border:1px solid var(--line);
     border-radius:3px;
+    font-size:11px;
+    transition:border-color .15s;
+  }
+  .tile{
     padding:8px;
     background:var(--panel2);
     cursor:pointer;
     min-height:112px;
-    font-size:11px;
-    transition:border-color .15s;
   }
   .tile:hover{border-color:var(--teal);}
   .tile.selected{border-color:var(--brass); box-shadow:0 0 0 1px var(--brass) inset;}
@@ -110,8 +112,26 @@
   .tile .owner-tag.player{background:rgba(92,138,74,0.25);color:var(--green);border:1px solid var(--green);}
   .tile .owner-tag.neutral{background:rgba(169,154,120,0.15);color:var(--parchment-dim);border:1px solid var(--line);}
   .tile .row{display:flex;justify-content:space-between;color:var(--parchment-dim);}
-  .tile .warn{color:var(--red);}
-  .tile .ok{color:var(--teal);}
+
+  .sea-lane{
+    padding:4px;
+    background:var(--panel2);
+    min-height:40px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .sea-lane:hover{border-color:var(--teal);}
+  .sea-lane .cost{color:var(--parchment-dim); font-size:10px;}
+  .sea-lane .ships{display:flex; align-items:center; gap:4px;}
+
+  .empty{
+    min-height:40px;
+    background:var(--panel);
+  }
+
+  .warn{color:var(--red);}
+  .ok{color:var(--teal);}
 
   .detail-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed var(--line);}
   .detail-row .k{color:var(--parchment-dim);}
@@ -235,19 +255,28 @@
 
 <script>
 // ============================================================
-// SETUP / ASSUMPTIONS (spec was silent on these — flagged in log)
-//  - Starting Churchill Mood: 5 (spec gives win/lose thresholds
-//    of 9 and 0 but no starting value)
-//  - Homeland non-grain deposits: Timber 3, Tobacco 1 (spec only
-//    specifies homeland's Grain deposits)
-//  - Brewery throughput scales with population assigned to it,
-//    1 grain + 1 timber -> 1 whiskey per assigned worker/turn,
-//    drawn from the shared global stockpile
-//  - Ship maintenance is charged once per occupied lane, not
-//    per ship on that lane ("only one is required")
-//  - Troops are a movable pool; stationing troops at a territory
-//    requires that territory to be sea-connected to the homeland
+// GRID LAYOUT
+// 5x5 grid: Territories at even-even positions, sea lanes in between, 4 diagonal cells empty.
 // ============================================================
+const GRID_SIZE = 5;
+const CELL_COUNT = GRID_SIZE * GRID_SIZE;
+
+// Territory positions in 5x5 grid (even-even indices)
+const TERRITORY_POSITIONS = [0, 2, 4, 10, 12, 14, 20, 22, 24];
+const GRID_TO_TERRITORY = {};
+TERRITORY_POSITIONS.forEach((gridIndex, terrIndex) => {
+  GRID_TO_TERRITORY[gridIndex] = terrIndex;
+});
+
+// Sea lane positions in 5x5 grid (between territories)
+const SEA_LANE_POSITIONS = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
+const GRID_TO_LANE = {};
+SEA_LANE_POSITIONS.forEach((gridIndex, laneIndex) => {
+  GRID_TO_LANE[gridIndex] = laneIndex;
+});
+
+// Empty cells (diagonal)
+const EMPTY_CELLS = [6, 8, 16, 18];
 
 const NAMES = ["Ironhold","Gale Point","Sandshore","Millbrook","HOMELAND","Fisher's Cape","Stonewick","Dustmere","Farrow's End"];
 const HOMELAND = 4;
@@ -265,8 +294,8 @@ function buildTerritories(){
       t.push({
         id:i, name:NAMES[i], owner:'player',
         population:9, requiredTroops:1, troopsStationed:1,
-        deposits:{grain:3,timber:3,tobacco:1},
-        maxDeposits:{grain:3,timber:3,tobacco:1},
+        deposits:{grain:3,timber:3,tobacco:0}, // No tobacco in homeland
+        maxDeposits:{grain:3,timber:3,tobacco:0},
         buildings:{farm:2,sawmill:0,plantation:0,brewery:0},
         popAssigned:{farm:2,sawmill:0,plantation:0,brewery:0}
       });
@@ -275,7 +304,7 @@ function buildTerritories(){
         id:i, name:NAMES[i], owner:'neutral',
         population:rand(1,9), requiredTroops:rand(1,3), troopsStationed:0,
         deposits:{grain:rand(2,7),timber:rand(1,5),tobacco:rand(1,3)},
-        maxDeposits:null, // filled below
+        maxDeposits:null,
         buildings:{farm:0,sawmill:0,plantation:0,brewery:0},
         popAssigned:{farm:0,sawmill:0,plantation:0,brewery:0}
       });
@@ -297,7 +326,7 @@ let state = {
   mood:5,
   gameOver:false,
   stock:{coins:10, grain:0, timber:0, tobacco:0, whiskey:0},
-  troopPool:1,
+  troopPool:2, // Starting with 2 troops
   shipPool:1,
   territories: buildTerritories(),
   lanes: buildLanes(),
@@ -457,8 +486,8 @@ function feedChurchill(resource) {
   }
 }
 
-function select(i){
-  state.selected = i;
+function select(territoryId){
+  state.selected = territoryId;
   render();
 }
 
@@ -467,7 +496,7 @@ function endTurn(){
   if(state.gameOver) return;
   let out = `=== TURN ${state.turn} RESOLUTION ===\n\n`;
 
-  // 1. Resource production
+  // 1. Resource production (RENEWABLE: no deposit depletion)
   out += "-- Resource Production --\n";
   let anyProd=false;
   state.territories.forEach(t=>{
@@ -476,14 +505,10 @@ function endTurn(){
       const res = BUILD_KEY[b];
       const workers = t.popAssigned[b];
       if(workers<=0) return;
-      const produced = Math.min(workers, t.deposits[res]);
+      const produced = workers; // Renewable: produce based on workers only
       if(produced>0){
-        t.deposits[res]-=produced;
-        state.stock[res]+=produced;
-        out += `${t.name}: +${produced} ${res} (deposits left: ${t.deposits[res]})\n`;
-        anyProd=true;
-      } else {
-        out += `${t.name}: ${b} idle — deposit depleted\n`;
+        state.stock[res] += produced;
+        out += `${t.name}: +${produced} ${res}\n`;
         anyProd=true;
       }
     });
@@ -589,24 +614,54 @@ function render(){
     <div class="stat"><span class="label">Territories</span><span class="value">${ownedOperationalCount()}/6</span></div>
   `;
 
-  // map
+  // map (5x5 grid)
   const map = document.getElementById('map');
   map.innerHTML = '';
-  state.territories.forEach(t=>{
-    const op = isOperational(t);
-    const conn = seaConnected(t.id);
-    const div = document.createElement('div');
-    div.className = 'tile' + (t.id===HOMELAND?' homeland':'') + (state.selected===t.id?' selected':'');
-    div.onclick = ()=>select(t.id);
-    div.innerHTML = `
-      <div class="name">${t.name}</div>
-      <span class="owner-tag ${t.owner==='player'?'player':'neutral'}">${t.owner==='player'?(op?'OPERATIONAL':'OWNED'):'NEUTRAL'}</span>
-      <div class="row"><span>Pop</span><span>${t.population}</span></div>
-      <div class="row"><span>Troops</span><span class="${t.troopsStationed>=t.requiredTroops?'ok':'warn'}">${t.troopsStationed}/${t.requiredTroops}</span></div>
-      <div class="row"><span>Sea link</span><span class="${conn?'ok':'warn'}">${conn?'YES':'NO'}</span></div>
-    `;
-    map.appendChild(div);
-  });
+  for(let i = 0; i < CELL_COUNT; i++){
+    if(EMPTY_CELLS.includes(i)){
+      // Empty cell
+      const div = document.createElement('div');
+      div.className = 'empty';
+      map.appendChild(div);
+    } else if(SEA_LANE_POSITIONS.includes(i)){
+      // Sea lane cell
+      const laneIndex = GRID_TO_LANE[i];
+      const lane = state.lanes[laneIndex];
+      const div = document.createElement('div');
+      div.className = 'sea-lane';
+      div.innerHTML = `
+        <span class="path">
+          ${NAMES[lane.a] === 'HOMELAND' ? 'HOME' : NAMES[lane.a].slice(0, 3)} &harr; ${NAMES[lane.b] === 'HOMELAND' ? 'HOME' : NAMES[lane.b].slice(0, 3)}
+          <span class="cost">(cost ${lane.cost})</span>
+        </span>
+        <span class="ships">
+          <button onclick="assignShip(${laneIndex}, -1)" ${lane.ships < 1 ? 'disabled' : ''}>-</button>
+          <span>${lane.ships}</span>
+          <button onclick="assignShip(${laneIndex}, 1)" ${state.shipPool < 1 ? 'disabled' : ''}>+</button>
+        </span>
+      `;
+      map.appendChild(div);
+    } else {
+      // Territory cell
+      const terrIndex = GRID_TO_TERRITORY[i];
+      const t = state.territories[terrIndex];
+      const op = isOperational(t);
+      const conn = seaConnected(t.id);
+      const div = document.createElement('div');
+      div.className = 'tile' + (t.id === HOMELAND ? ' homeland' : '') + (state.selected === t.id ? ' selected' : '');
+      div.onclick = () => select(t.id);
+      div.innerHTML = `
+        <div class="name">${t.name}</div>
+        <span class="owner-tag ${t.owner === 'player' ? 'player' : 'neutral'}">
+          ${t.owner === 'player' ? (op ? 'OPERATIONAL' : 'OWNED') : 'NEUTRAL'}
+        </span>
+        <div class="row"><span>Pop</span><span>${t.population}</span></div>
+        <div class="row"><span>Troops</span><span class="${t.troopsStationed >= t.requiredTroops ? 'ok' : 'warn'}">${t.troopsStationed}/${t.requiredTroops}</span></div>
+        <div class="row"><span>Sea link</span><span class="${conn ? 'ok' : 'warn'}">${conn ? 'YES' : 'NO'}</span></div>
+      `;
+      map.appendChild(div);
+    }
+  }
 
   // detail panel
   const t = state.territories[state.selected];
@@ -619,10 +674,10 @@ function render(){
   html += `<div class="detail-row"><span class="k">Sea Connection</span><span>${seaConnected(t.id)?'Connected':'Isolated'}</span></div>`;
   html += `<div class="detail-row"><span class="k">Status</span><span>${op?'Operational':'Not producing'}</span></div>`;
 
-  html += `<div class="group"><div class="group-title">Deposits Remaining</div>`;
-  html += `<div class="detail-row"><span class="k">Grain</span><span>${t.deposits.grain}/${t.maxDeposits.grain}</span></div>`;
-  html += `<div class="detail-row"><span class="k">Timber</span><span>${t.deposits.timber}/${t.maxDeposits.timber}</span></div>`;
-  html += `<div class="detail-row"><span class="k">Tobacco</span><span>${t.deposits.tobacco}/${t.maxDeposits.tobacco}</span></div></div>`;
+  html += `<div class="group"><div class="group-title">Deposits (Max)</div>`;
+  html += `<div class="detail-row"><span class="k">Grain</span><span>${t.maxDeposits.grain}</span></div>`;
+  html += `<div class="detail-row"><span class="k">Timber</span><span>${t.maxDeposits.timber}</span></div>`;
+  html += `<div class="detail-row"><span class="k">Tobacco</span><span>${t.maxDeposits.tobacco}</span></div></div>`;
 
   html += `<div class="group"><div class="group-title">Garrison</div>`;
   html += `<button ${state.troopPool<1?'disabled':''} onclick="stationTroop(${t.id},1)">Station +1 (pool: ${state.troopPool})</button>`;
@@ -665,7 +720,7 @@ function render(){
   document.getElementById('btnFeedTobacco').disabled = !(state.stock.tobacco >= 1);
   document.getElementById('btnFeedWhiskey').disabled = !(state.stock.whiskey >= 1);
 
-  // lanes
+  // lanes (legacy, hidden in UI but kept for logic)
   const lanesDiv = document.getElementById('lanes');
   lanesDiv.innerHTML = '';
   state.lanes.forEach((l,idx)=>{
