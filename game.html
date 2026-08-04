@@ -1129,7 +1129,7 @@ const BUILD_KEY = { farm:'grain', sawmill:'timber', plantation:'tobacco', brewer
 const BUILD_COST = {
   farm:{coins:1},
   sawmill:{coins:1},
-  plantation:{grain:2,coins:1},
+  plantation:{timber:1,coins:1},
   brewery:{timber:2,coins:2}
 };
 
@@ -1479,7 +1479,7 @@ function render(){
     const rows = [
       ['farm','Farm','1 coin'],
       ['sawmill','Sawmill','1 coin'],
-      ['plantation','Plantation','2 grain + 1 coin'],
+      ['plantation','Plantation','1 timber + 1 coin'],
       ['brewery','Brewery','2 timber + 2 coins']
     ];
     rows.forEach(([key,label,costLabel])=>{
