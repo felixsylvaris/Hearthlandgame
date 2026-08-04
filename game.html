@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Hearthland</title>
+<style>
+  :root{
+    --sea:#0b1220;
+    --panel:#111b2e;
+    --panel2:#0e1626;
+    --line:#24344f;
+    --parchment:#e8dcc0;
+    --parchment-dim:#a99a78;
+    --brass:#c9a227;
+    --teal:#3fa796;
+    --red:#b1443a;
+    --green:#5c8a4a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--sea);
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(63,167,150,0.06), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(201,162,39,0.05), transparent 40%);
+    color:var(--parchment);
+    font-family: 'Courier New', monospace;
+    padding:18px 22px;
+  }
+  h1{
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight:700;
+    letter-spacing:0.5px;
+    margin:0 0 2px 0;
+    color:var(--brass);
+    font-size:26px;
+  }
+  .subtitle{color:var(--parchment-dim);font-size:12px;margin-bottom:16px;font-style:italic;}
+
+  .statbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:10px 14px;
+    margin-bottom:16px;
+  }
+  .stat{
+    display:flex;
+    flex-direction:column;
+    min-width:78px;
+    padding:2px 10px;
+    border-right:1px solid var(--line);
+  }
+  .stat:last-child{border-right:none;}
+  .stat .label{font-size:10px;letter-spacing:1px;color:var(--parchment-dim);text-transform:uppercase;}
+  .stat .value{font-family:Georgia,serif;font-size:18px;color:var(--brass);}
+  .stat.mood .value{color:var(--teal);}
+  .stat.mood.low .value{color:var(--red);}
+
+  .layout{
+    display:grid;
+    grid-template-columns: 420px 320px 1fr;
+    gap:16px;
+    align-items:start;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:14px;
+  }
+  .panel h2{
+    font-family:Georgia,serif;
+    font-size:14px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--brass);
+    margin:0 0 10px 0;
+    border-bottom:1px solid var(--line);
+    padding-bottom:6px;
+  }
+
+  .map{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+  }
+  .tile{
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:8px;
+    background:var(--panel2);
+    cursor:pointer;
+    min-height:112px;
+    font-size:11px;
+    transition:border-color .15s;
+  }
+  .tile:hover{border-color:var(--teal);}
+  .tile.selected{border-color:var(--brass); box-shadow:0 0 0 1px var(--brass) inset;}
+  .tile.homeland{border-color:var(--brass);}
+  .tile .name{font-weight:bold;color:var(--parchment);font-size:12px;}
+  .tile .owner-tag{
+    display:inline-block;font-size:9px;letter-spacing:0.5px;
+    padding:1px 5px;border-radius:2px;margin:3px 0;
+  }
+  .tile .owner-tag.player{background:rgba(92,138,74,0.25);color:var(--green);border:1px solid var(--green);}
+  .tile .owner-tag.neutral{background:rgba(169,154,120,0.15);color:var(--parchment-dim);border:1px solid var(--line);}
+  .tile .row{display:flex;justify-content:space-between;color:var(--parchment-dim);}
+  .tile .warn{color:var(--red);}
+  .tile .ok{color:var(--teal);}
+
+  .detail-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed var(--line);}
+  .detail-row .k{color:var(--parchment-dim);}
+
+  button{
+    font-family:'Courier New',monospace;
+    background:var(--panel2);
+    color:var(--parchment);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:4px 8px;
+    font-size:11px;
+    cursor:pointer;
+    margin:2px 2px 2px 0;
+  }
+  button:hover:not(:disabled){border-color:var(--teal); color:#fff;}
+  button:disabled{opacity:0.35;cursor:not-allowed;}
+  button.primary{border-color:var(--brass); color:var(--brass);}
+  button.danger{border-color:var(--red); color:var(--red);}
+  button.mood-booster{
+    background:rgba(63,167,150,0.2);
+    border-color:var(--teal);
+    color:var(--teal);
+    font-weight:bold;
+    padding:6px 12px;
+    font-size:12px;
+  }
+  button.mood-booster:hover:not(:disabled){
+    background:rgba(63,167,150,0.4);
+    color:#fff;
+  }
+
+  .group{margin-bottom:12px;}
+  .group-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--parchment-dim);margin-bottom:4px;}
+
+  .lane-row{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:11px;padding:5px 0;border-bottom:1px dashed var(--line);
+  }
+  .lane-row .path{color:var(--parchment-dim);}
+  .lane-row .active-tag{color:var(--teal);}
+  .lane-row .inactive-tag{color:var(--parchment-dim);}
+
+  .market-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:5px 0;border-bottom:1px dashed var(--line);}
+
+  #log{
+    white-space:pre-wrap;
+    background:#060a12;
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:10px;
+    height:340px;
+    overflow:auto;
+    font-size:11px;
+    color:var(--parchment-dim);
+    margin-top:12px;
+  }
+
+  .banner{
+    text-align:center;
+    font-family:Georgia,serif;
+    font-size:20px;
+    padding:14px;
+    border-radius:4px;
+    margin-bottom:14px;
+  }
+  .banner.victory{background:rgba(92,138,74,0.15);border:1px solid var(--green);color:var(--green);}
+  .banner.defeat{background:rgba(177,68,58,0.15);border:1px solid var(--red);color:var(--red);}
+
+  .endturn-wrap{text-align:right;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<h1>HEARTHLAND</h1>
+<div class="subtitle">Keep the crown fed, the sea lanes clear, and Churchill's mood off the floor.</div>
+
+<div id="banner"></div>
+
+<div class="statbar" id="statbar"></div>
+
+<div class="layout">
+  <div class="panel">
+    <h2>The Realm</h2>
+    <div class="map" id="map"></div>
+  </div>
+
+  <div class="panel">
+    <h2 id="detailTitle">Select a Territory</h2>
+    <div id="detail"></div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Empire Actions</h2>
+      <div class="group">
+        <div class="group-title">Recruitment &amp; Shipyard</div>
+        <button id="btnRecruit" onclick="recruitTroop()"></button>
+        <button id="btnShip" onclick="buildShip()"></button>
+      </div>
+      <div class="group">
+        <div class="group-title">Churchill's Mood</div>
+        <button class="mood-booster" id="btnFeedTobacco" onclick="feedChurchill('tobacco')" title="Consume 1 Tobacco to boost Churchill's mood by +1">Feed Tobacco (+1 Mood)</button>
+        <button class="mood-booster" id="btnFeedWhiskey" onclick="feedChurchill('whiskey')" title="Consume 1 Whiskey to boost Churchill's mood by +2">Feed Whiskey (+2 Mood)</button>
+      </div>
+      <div class="group">
+        <div class="group-title">Sea Lanes</div>
+        <div id="lanes"></div>
+      </div>
+      <div class="group">
+        <div class="group-title">World Market</div>
+        <div id="market"></div>
+      </div>
+      <div class="endturn-wrap">
+        <button class="primary" id="btnEndTurn" onclick="endTurn()">END TURN &rarr;</button>
+      </div>
+    </div>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// SETUP / ASSUMPTIONS (spec was silent on these — flagged in log)
+//  - Starting Churchill Mood: 5 (spec gives win/lose thresholds
+//    of 9 and 0 but no starting value)
+//  - Homeland non-grain deposits: Timber 3, Tobacco 1 (spec only
+//    specifies homeland's Grain deposits)
+//  - Brewery throughput scales with population assigned to it,
+//    1 grain + 1 timber -> 1 whiskey per assigned worker/turn,
+//    drawn from the shared global stockpile
+//  - Ship maintenance is charged once per occupied lane, not
+//    per ship on that lane ("only one is required")
+//  - Troops are a movable pool; stationing troops at a territory
+//    requires that territory to be sea-connected to the homeland
+// ============================================================
+
+const NAMES = ["Ironhold","Gale Point","Sandshore","Millbrook","HOMELAND","Fisher's Cape","Stonewick","Dustmere","Farrow's End"];
+const HOMELAND = 4;
+const EDGES = [
+  [0,1],[1,2],[3,4],[4,5],[6,7],[7,8], // horizontal
+  [0,3],[3,6],[1,4],[4,7],[2,5],[5,8]  // vertical
+];
+
+function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+function buildTerritories(){
+  const t = [];
+  for(let i=0;i<9;i++){
+    if(i===HOMELAND){
+      t.push({
+        id:i, name:NAMES[i], owner:'player',
+        population:9, requiredTroops:1, troopsStationed:1,
+        deposits:{grain:3,timber:3,tobacco:1},
+        maxDeposits:{grain:3,timber:3,tobacco:1},
+        buildings:{farm:2,sawmill:0,plantation:0,brewery:0},
+        popAssigned:{farm:2,sawmill:0,plantation:0,brewery:0}
+      });
+    } else {
+      t.push({
+        id:i, name:NAMES[i], owner:'neutral',
+        population:rand(1,9), requiredTroops:rand(1,3), troopsStationed:0,
+        deposits:{grain:rand(2,7),timber:rand(1,5),tobacco:rand(1,3)},
+        maxDeposits:null, // filled below
+        buildings:{farm:0,sawmill:0,plantation:0,brewery:0},
+        popAssigned:{farm:0,sawmill:0,plantation:0,brewery:0}
+      });
+      t[i].maxDeposits = {...t[i].deposits};
+    }
+  }
+  return t;
+}
+
+function buildLanes(){
+  return EDGES.map(([a,b])=>{
+    const inner = (a===HOMELAND || b===HOMELAND);
+    return { a, b, cost: inner? rand(1,5): rand(5,7), ships:0, inner };
+  });
+}
+
+let state = {
+  turn:1,
+  mood:5,
+  gameOver:false,
+  stock:{coins:10, grain:0, timber:0, tobacco:0, whiskey:0},
+  troopPool:1,
+  shipPool:1,
+  territories: buildTerritories(),
+  lanes: buildLanes(),
+  market: {
+    grain:{buy:2,sell:1,stock:8},
+    timber:{buy:3,sell:1,stock:8},
+    tobacco:{buy:4,sell:2,stock:1},
+    whiskey:{buy:5,sell:3,stock:1}
+  },
+  selected: HOMELAND
+};
+
+const BUILD_KEY = { farm:'grain', sawmill:'timber', plantation:'tobacco', brewery:null };
+const BUILD_COST = {
+  farm:{coins:1},
+  sawmill:{coins:1},
+  plantation:{grain:2,coins:1},
+  brewery:{timber:2,coins:2}
+};
+
+// ---------- GRAPH / STATUS ----------
+function activeLanesGraph(){
+  const adj = {};
+  for(let i=0;i<9;i++) adj[i]=[];
+  state.lanes.forEach(l=>{
+    if(l.ships>0){ adj[l.a].push(l.b); adj[l.b].push(l.a); }
+  });
+  return adj;
+}
+
+function seaConnected(idx){
+  if(idx===HOMELAND) return true;
+  const adj = activeLanesGraph();
+  const seen = new Set([HOMELAND]);
+  const queue=[HOMELAND];
+  while(queue.length){
+    const cur = queue.shift();
+    if(cur===idx) return true;
+    adj[cur].forEach(n=>{
+      if(!seen.has(n)){ seen.add(n); queue.push(n); }
+    });
+  }
+  return seen.has(idx);
+}
+
+function isOperational(t){
+  return t.owner==='player' && t.troopsStationed>=t.requiredTroops && seaConnected(t.id);
+}
+
+function ownedOperationalCount(){
+  return state.territories.filter(isOperational).length;
+}
+
+// ---------- ACTIONS ----------
+function buildBuilding(i,type){
+  const t = state.territories[i];
+  if(t.owner!=='player') return;
+  const cost = BUILD_COST[type];
+  for(const k in cost){ if(state.stock[k] < cost[k]) return; }
+  for(const k in cost){ state.stock[k] -= cost[k]; }
+  t.buildings[type]++;
+  render();
+}
+
+function assignPop(i,type,delta){
+  const t = state.territories[i];
+  const next = t.popAssigned[type] + delta;
+  if(next < 0) return;
+  if(next > t.buildings[type]) return;
+  const totalAfter = Object.keys(t.popAssigned).reduce((s,k)=> s + (k===type?next:t.popAssigned[k]), 0);
+  if(totalAfter > t.population) return;
+  t.popAssigned[type] = next;
+  render();
+}
+
+function stationTroop(i,delta){
+  const t = state.territories[i];
+  if(delta>0){
+    if(state.troopPool < delta) return;
+    if(t.owner!=='player' && !seaConnected(i)) return;
+    state.troopPool -= delta;
+    t.troopsStationed += delta;
+  } else {
+    const removeAmt = Math.min(-delta, t.troopsStationed);
+    t.troopsStationed -= removeAmt;
+    state.troopPool += removeAmt;
+  }
+  render();
+}
+
+function claimTerritory(i){
+  const t = state.territories[i];
+  if(t.owner==='player') return;
+  if(t.troopsStationed>=t.requiredTroops && seaConnected(i)){
+    t.owner='player';
+  }
+  render();
+}
+
+function recruitTroop(){
+  if(state.stock.grain>=2 && state.stock.coins>=1){
+    state.stock.grain-=2; state.stock.coins-=1;
+    state.troopPool++;
+    render();
+  }
+}
+
+function buildShip(){
+  if(state.stock.timber>=2 && state.stock.coins>=1){
+    state.stock.timber-=2; state.stock.coins-=1;
+    state.shipPool++;
+    render();
+  }
+}
+
+function assignShip(laneIdx,delta){
+  const l = state.lanes[laneIdx];
+  if(delta>0){
+    if(state.shipPool<1) return;
+    state.shipPool--; l.ships++;
+  } else {
+    if(l.ships<1) return;
+    l.ships--; state.shipPool++;
+  }
+  render();
+}
+
+function marketBuy(res){
+  const m = state.market[res];
+  if(state.stock.coins>=m.buy && m.stock>=1){
+    state.stock.coins -= m.buy;
+    state.stock[res] += 1;
+    m.stock -= 1;
+    render();
+  }
+}
+
+function marketSell(res){
+  const m = state.market[res];
+  if(state.stock[res]>=1 && m.stock < 10){
+    state.stock[res] -= 1;
+    state.stock.coins += m.sell;
+    m.stock += 1;
+    render();
+  }
+}
+
+function feedChurchill(resource) {
+  if (state.stock[resource] >= 1) {
+    state.stock[resource] -= 1;
+    if (resource === 'tobacco') {
+      state.mood = Math.min(10, state.mood + 1);
+    } else if (resource === 'whiskey') {
+      state.mood = Math.min(10, state.mood + 2);
+    }
+    render();
+  }
+}
+
+function select(i){
+  state.selected = i;
+  render();
+}
+
+// ---------- TURN RESOLUTION ----------
+function endTurn(){
+  if(state.gameOver) return;
+  let out = `=== TURN ${state.turn} RESOLUTION ===\n\n`;
+
+  // 1. Resource production
+  out += "-- Resource Production --\n";
+  let anyProd=false;
+  state.territories.forEach(t=>{
+    if(!isOperational(t)) return;
+    ['farm','sawmill','plantation'].forEach(b=>{
+      const res = BUILD_KEY[b];
+      const workers = t.popAssigned[b];
+      if(workers<=0) return;
+      const produced = Math.min(workers, t.deposits[res]);
+      if(produced>0){
+        t.deposits[res]-=produced;
+        state.stock[res]+=produced;
+        out += `${t.name}: +${produced} ${res} (deposits left: ${t.deposits[res]})\n`;
+        anyProd=true;
+      } else {
+        out += `${t.name}: ${b} idle — deposit depleted\n`;
+        anyProd=true;
+      }
+    });
+  });
+  if(!anyProd) out += "(nothing produced)\n";
+
+  // 2. Brewery production
+  out += "\n-- Brewery Production --\n";
+  let breweryWorkers=0;
+  state.territories.forEach(t=>{ if(isOperational(t)) breweryWorkers += t.popAssigned.brewery; });
+  const conv = Math.min(breweryWorkers, state.stock.grain, state.stock.timber);
+  if(conv>0){
+    state.stock.grain-=conv; state.stock.timber-=conv; state.stock.whiskey+=conv;
+    out += `Breweries convert ${conv} grain + ${conv} timber -> ${conv} whiskey\n`;
+  } else {
+    out += "(no brewery output)\n";
+  }
+
+  // 3. Tax income
+  out += "\n-- Tax Income --\n";
+  let tax=0;
+  state.territories.forEach(t=>{ if(isOperational(t)){ tax+=t.population; } });
+  state.stock.coins += tax;
+  out += `Collected ${tax} coins from ${ownedOperationalCount()} operational territories\n`;
+
+  // 4. Ship maintenance
+  out += "\n-- Ship Maintenance --\n";
+  let maintDue=0, maintPaid=0;
+  state.lanes.forEach(l=>{
+    if(l.ships>0){
+      maintDue+=l.cost;
+      const pay = Math.min(state.stock.coins, l.cost);
+      state.stock.coins-=pay;
+      maintPaid+=pay;
+    }
+  });
+  out += `Maintenance due: ${maintDue}, paid: ${maintPaid}` + (maintPaid<maintDue? " (SHORTFALL — lane upkeep unpaid)\n":"\n");
+
+  // 5. Troop upkeep
+  out += "\n-- Troop Upkeep --\n";
+  const totalTroops = state.troopPool + state.territories.reduce((s,t)=>s+t.troopsStationed,0);
+  let need = totalTroops;
+  const fromGrain = Math.min(state.stock.grain, need);
+  state.stock.grain -= fromGrain; need -= fromGrain;
+  const fromCoins = Math.min(state.stock.coins, need);
+  state.stock.coins -= fromCoins; need -= fromCoins;
+  out += `${totalTroops} troops fed with ${fromGrain} grain`+(fromCoins>0?`, ${fromCoins} coins`:'')+"\n";
+  if(need>0){
+    state.mood = Math.max(0, state.mood-1);
+    out += `Unable to fully supply the army — Churchill Mood -1\n`;
+  }
+
+  // 6. Mood decrease
+  state.mood = Math.max(0, state.mood-1);
+  out += `\n-- Churchill Mood --\nDaily decay: -1 (now ${state.mood})\n`;
+
+  // 7. Trade
+  out += "\n-- Trade --\nMarket prices hold steady. Buy/sell any time from the Market panel.\n";
+
+  // 8. Victory / defeat
+  out += "\n-- Status Check --\n";
+  const owned = ownedOperationalCount();
+  out += `Operational territories: ${owned}/6 needed | Mood: ${state.mood} (need >=9 to win)\n`;
+
+  if(state.mood<=0){
+    state.gameOver='defeat';
+    out += "\nCHURCHILL HAS COLLAPSED. The empire falls into disarray. DEFEAT.\n";
+  } else if(owned>=6 && state.mood>=9){
+    state.gameOver='victory';
+    out += "\nSix territories secure, the crown content. VICTORY!\n";
+  }
+
+  document.getElementById('log').textContent = out + "\n" + document.getElementById('log').textContent;
+  if(!state.gameOver) state.turn++;
+  render();
+}
+
+// ---------- RENDER ----------
+function render(){
+  // banner
+  const banner = document.getElementById('banner');
+  if(state.gameOver==='victory'){
+    banner.innerHTML = `<div class="banner victory">VICTORY — the empire endures, and Churchill is, for once, pleased.</div>`;
+  } else if(state.gameOver==='defeat'){
+    banner.innerHTML = `<div class="banner defeat">DEFEAT — Churchill's mood has bottomed out. The empire is lost.</div>`;
+  } else {
+    banner.innerHTML = '';
+  }
+
+  // stat bar
+  const s = state.stock;
+  const moodClass = state.mood<=2 ? 'mood low':'mood';
+  document.getElementById('statbar').innerHTML = `
+    <div class="stat"><span class="label">Turn</span><span class="value">${state.turn}</span></div>
+    <div class="stat ${moodClass}"><span class="label">Mood</span><span class="value">${state.mood}/10</span></div>
+    <div class="stat"><span class="label">Coins</span><span class="value">${s.coins}</span></div>
+    <div class="stat"><span class="label">Grain</span><span class="value">${s.grain}</span></div>
+    <div class="stat"><span class="label">Timber</span><span class="value">${s.timber}</span></div>
+    <div class="stat"><span class="label">Tobacco</span><span class="value">${s.tobacco}</span></div>
+    <div class="stat"><span class="label">Whiskey</span><span class="value">${s.whiskey}</span></div>
+    <div class="stat"><span class="label">Troop Pool</span><span class="value">${state.troopPool}</span></div>
+    <div class="stat"><span class="label">Ship Pool</span><span class="value">${state.shipPool}</span></div>
+    <div class="stat"><span class="label">Territories</span><span class="value">${ownedOperationalCount()}/6</span></div>
+  `;
+
+  // map
+  const map = document.getElementById('map');
+  map.innerHTML = '';
+  state.territories.forEach(t=>{
+    const op = isOperational(t);
+    const conn = seaConnected(t.id);
+    const div = document.createElement('div');
+    div.className = 'tile' + (t.id===HOMELAND?' homeland':'') + (state.selected===t.id?' selected':'');
+    div.onclick = ()=>select(t.id);
+    div.innerHTML = `
+      <div class="name">${t.name}</div>
+      <span class="owner-tag ${t.owner==='player'?'player':'neutral'}">${t.owner==='player'?(op?'OPERATIONAL':'OWNED'):'NEUTRAL'}</span>
+      <div class="row"><span>Pop</span><span>${t.population}</span></div>
+      <div class="row"><span>Troops</span><span class="${t.troopsStationed>=t.requiredTroops?'ok':'warn'}">${t.troopsStationed}/${t.requiredTroops}</span></div>
+      <div class="row"><span>Sea link</span><span class="${conn?'ok':'warn'}">${conn?'YES':'NO'}</span></div>
+    `;
+    map.appendChild(div);
+  });
+
+  // detail panel
+  const t = state.territories[state.selected];
+  document.getElementById('detailTitle').textContent = t.name + (t.id===HOMELAND?' (Homeland)':'');
+  const op = isOperational(t);
+  let html = '';
+  html += `<div class="detail-row"><span class="k">Owner</span><span>${t.owner}</span></div>`;
+  html += `<div class="detail-row"><span class="k">Population</span><span>${t.population}</span></div>`;
+  html += `<div class="detail-row"><span class="k">Troops Required</span><span>${t.requiredTroops}</span></div>`;
+  html += `<div class="detail-row"><span class="k">Sea Connection</span><span>${seaConnected(t.id)?'Connected':'Isolated'}</span></div>`;
+  html += `<div class="detail-row"><span class="k">Status</span><span>${op?'Operational':'Not producing'}</span></div>`;
+
+  html += `<div class="group"><div class="group-title">Deposits Remaining</div>`;
+  html += `<div class="detail-row"><span class="k">Grain</span><span>${t.deposits.grain}/${t.maxDeposits.grain}</span></div>`;
+  html += `<div class="detail-row"><span class="k">Timber</span><span>${t.deposits.timber}/${t.maxDeposits.timber}</span></div>`;
+  html += `<div class="detail-row"><span class="k">Tobacco</span><span>${t.deposits.tobacco}/${t.maxDeposits.tobacco}</span></div></div>`;
+
+  html += `<div class="group"><div class="group-title">Garrison</div>`;
+  html += `<button ${state.troopPool<1?'disabled':''} onclick="stationTroop(${t.id},1)">Station +1 (pool: ${state.troopPool})</button>`;
+  html += `<button ${t.troopsStationed<1?'disabled':''} onclick="stationTroop(${t.id},-1)">Withdraw -1</button>`;
+  if(t.owner!=='player'){
+    const canClaim = t.troopsStationed>=t.requiredTroops && seaConnected(t.id);
+    html += `<br><button class="primary" ${canClaim?'':'disabled'} onclick="claimTerritory(${t.id})">Claim Territory</button>`;
+  }
+  html += `</div>`;
+
+  if(t.owner==='player'){
+    html += `<div class="group"><div class="group-title">Buildings &amp; Workers</div>`;
+    const rows = [
+      ['farm','Farm','1 coin'],
+      ['sawmill','Sawmill','1 coin'],
+      ['plantation','Plantation','2 grain + 1 coin'],
+      ['brewery','Brewery','2 timber + 2 coins']
+    ];
+    rows.forEach(([key,label,costLabel])=>{
+      html += `<div class="detail-row"><span class="k">${label} (${t.buildings[key]} built)</span><span>${costLabel}</span></div>`;
+      html += `<button onclick="buildBuilding(${t.id},'${key}')">Build ${label}</button>`;
+      html += `<button onclick="assignPop(${t.id},'${key}',1)">Worker +1</button>`;
+      html += `<button onclick="assignPop(${t.id},'${key}',-1)">Worker -1</button>`;
+      html += `<span style="color:var(--parchment-dim);font-size:10px;"> assigned: ${t.popAssigned[key]}/${t.buildings[key]}</span><br>`;
+    });
+    const popUsed = Object.values(t.popAssigned).reduce((a,b)=>a+b,0);
+    html += `<div style="font-size:10px;color:var(--parchment-dim);margin-top:4px;">Population used: ${popUsed}/${t.population}</div>`;
+    html += `</div>`;
+  }
+
+  document.getElementById('detail').innerHTML = html;
+
+  // recruit / ship buttons
+  document.getElementById('btnRecruit').textContent = `Recruit Troop (2 grain + 1 coin)`;
+  document.getElementById('btnRecruit').disabled = !(state.stock.grain>=2 && state.stock.coins>=1);
+  document.getElementById('btnShip').textContent = `Build Ship (2 timber + 1 coin)`;
+  document.getElementById('btnShip').disabled = !(state.stock.timber>=2 && state.stock.coins>=1);
+
+  // Churchill's mood buttons
+  document.getElementById('btnFeedTobacco').disabled = !(state.stock.tobacco >= 1);
+  document.getElementById('btnFeedWhiskey').disabled = !(state.stock.whiskey >= 1);
+
+  // lanes
+  const lanesDiv = document.getElementById('lanes');
+  lanesDiv.innerHTML = '';
+  state.lanes.forEach((l,idx)=>{
+    const row = document.createElement('div');
+    row.className = 'lane-row';
+    row.innerHTML = `
+      <span class="path">${NAMES[l.a]===('HOMELAND')?'HOME':NAMES[l.a].slice(0,4)} &harr; ${NAMES[l.b]==='HOMELAND'?'HOME':NAMES[l.b].slice(0,4)} <span style="color:var(--parchment-dim)">(cost ${l.cost})</span></span>
+      <span>
+        <span class="${l.ships>0?'active-tag':'inactive-tag'}">${l.ships} ship${l.ships===1?'':'s'}</span>
+        <button ${state.shipPool<1?'disabled':''} onclick="assignShip(${idx},1)">+</button>
+        <button ${l.ships<1?'disabled':''} onclick="assignShip(${idx},-1)">-</button>
+      </span>
+    `;
+    lanesDiv.appendChild(row);
+  });
+
+  // market
+  const marketDiv = document.getElementById('market');
+  marketDiv.innerHTML = '';
+  Object.keys(state.market).forEach(res=>{
+    const m = state.market[res];
+    const row = document.createElement('div');
+    row.className = 'market-row';
+    row.innerHTML = `
+      <span>${res[0].toUpperCase()+res.slice(1)} <span style="color:var(--parchment-dim)">(world: ${m.stock}/10)</span></span>
+      <span>
+        <button ${!(state.stock.coins>=m.buy && m.stock>=1)?'disabled':''} onclick="marketBuy('${res}')">Buy @${m.buy}</button>
+        <button ${!(state.stock[res]>=1 && m.stock<10)?'disabled':''} onclick="marketSell('${res}')">Sell @${m.sell}</button>
+      </span>
+    `;
+    marketDiv.appendChild(row);
+  });
+
+  document.getElementById('btnEndTurn').disabled = !!state.gameOver;
+}
+
+render();
+</script>
+</body>
+</html>
